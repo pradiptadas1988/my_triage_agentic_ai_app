@@ -1,10 +1,9 @@
-# from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-# import pandas as pd
+import pandas as pd
 
 load_dotenv()
 
@@ -12,21 +11,33 @@ load_dotenv()
 @tool
 def suggest_assignment_group(description: str) -> str:
     """Suggests the assignment group based on incident description."""
-    if "email" in description.lower():
-        return "Email Support"
-    elif "vpn" in description.lower():
-        return "Network Team"
-    elif "form" in description.lower():
-        return "App Dev"
+    desc = description.lower()
+    if "payment" in desc or "gateway" in desc:
+        return "Payment Team"
+    elif "checkout" in desc or "cart" in desc:
+        return "Frontend Web Team"
+    elif "image" in desc or "product" in desc:
+        return "Content Management"
+    elif "login" in desc or "session" in desc:
+        return "Authentication Services"
+    elif "email" in desc or "order" in desc:
+        return "Order Fulfillment"
+    elif "coupon" in desc or "discount" in desc:
+        return "Promotions Team"
     else:
-        return "IT Support"
+        return "General IT Support"
 
 @tool
 def suggest_action(priority: str, impact: str) -> str:
     """Suggests next triage action based on priority and impact."""
-    if priority.lower() in ["high", "critical"] or impact.lower() == "high":
+    p = priority.lower()
+    i = impact.lower()
+    if p == "critical" or i == "high":
         return "Escalate to Incident Manager"
-    return "Assign to appropriate group and monitor"
+    elif p == "high" or i == "medium":
+        return "Immediate attention by team lead"
+    else:
+        return "Assign to appropriate group and monitor"
 
 # 2. Define LLM
 llm = ChatOpenAI(model="gpt-4o")
@@ -43,17 +54,25 @@ tools = [suggest_assignment_group, suggest_action]
 agent = create_openai_functions_agent(llm=llm, tools=tools, prompt=prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-# 4. Load data (mockup for one ticket)
-ticket = {
-    "short_description": "Unable to access company VPN from home",
-    "priority": "Medium",
-    "impact": "High"
-}
+# 5. Load tickets from Excel
+file_path = "data_source/ecommerce_inc_list.xlsx"
+df = pd.read_excel(file_path)
 
-# 5. Run agent
-response = agent_executor.invoke({
-    "input": f"Ticket: {ticket['short_description']}. Priority: {ticket['priority']}. Impact: {ticket['impact']}"
-})
+# 6. Run agent for each ticket and collect results
+results = []
+for idx, row in df.iterrows():
+    input_text = f"Ticket: {row['Short Description']}. Priority: {row['Priority']}. Impact: {row['Impact']}"
+    response = agent_executor.invoke({"input": input_text})
+    results.append({
+        "INC Number": row['INC Number'],
+        "Short Description": row['Short Description'],
+        "Priority": row['Priority'],
+        "Impact": row['Impact'],
+        "Triage Suggestion": response["output"]
+    })
 
-print("\n--- Agent Suggestion ---\n")
-print(response["output"])
+# 7. Save results to new Excel file
+result_df = pd.DataFrame(results)
+result_df.to_excel("triage_suggestions_output.xlsx", index=False)
+
+print("\nTriage processing complete. Results saved to 'triage_suggestions_output.xlsx'.")
