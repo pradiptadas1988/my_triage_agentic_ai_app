@@ -11,6 +11,8 @@ langchain-core = "~=0.2.38"
 langchain-community = "~=0.2.16"
 pandas = "*"
 openpyxl = "*"
+sentence-transformers = "*"
+scikit-learn = "*"
 
 [dev-packages]
 
