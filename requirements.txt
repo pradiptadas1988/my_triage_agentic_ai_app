@@ -4,3 +4,7 @@ langchain-openai~=0.1.23
 langchain-core~=0.2.38
 requests~=2.32.3
 langchain-community~=0.2.16
+chromadb
+pymupdf
+langchain-huggingface
+langchain-chroma
